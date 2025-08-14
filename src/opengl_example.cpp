@@ -10,7 +10,7 @@
 /**
  * 一个全局的GL变量，用于操作顶点的缓冲器对象
  */
-GLuint VBO;
+GLuint VBO, EBO;
 
 static void RenderScenceCB() {
   /**
@@ -34,37 +34,44 @@ static void RenderScenceCB() {
    * 
    * @note 顶点属性数组是OpenGL中用于存储顶点数据的缓冲区，通常用于传递顶点坐标、颜色、法线等信息
    * 
-   * @note 这里的0表示顶点属性数组的位置索引，通常是0表示第一个顶点属性
-   *       如果有多个顶点属性，可以使用不同的索引来启用它们
-   *       例如：位置是0，颜色是1，法线是2等
+   * @note 这里index=0是一个逻辑概念，即使用第一租顶点属性数组
+   *       一般可以自定义0是位置，1是颜色，2是法线等，这些都是自定义的，可以修改
    * 
    * @note 在绘制完成后，通常需要禁用顶点属性数组，以避免影响后续的绘制操作
    *       例如：glDisableVertexAttribArray(0);
    */
   glEnableVertexAttribArray(0);
+  glEnableVertexAttribArray(1);
 
   /**
    * @brief 用于指定顶点属性数组的数据格式和在缓冲区中的存储方式，让 OpenGL 知道如何从 VBO（顶点缓冲对象）中读取顶点数据。
    * 
    * @param index 顶点属性的索引，跟glEnableVertexAttribArray()中使用的索引保持一致
-   * @param size 每个顶点属性的组件数量，例如位置通常是3（x, y, z），颜色通常是4（r, g, b, a）
+   * @param size 每个顶点属性的组件数量，即该属性一组数据的大小，通常为2（如纹理坐标）、3（如位置、法线）或4（如颜色）
    * @param type 数据类型，通常是GL_FLOAT（浮点数），也可以是GL_INT（整数）等
    * @param normalized 是否将数据归一化，如果为GL_TRUE，则将整数数据归一化到[0, 1]或[-1, 1]范围。浮点数一般为GL_FALSE，整数类型通常为GL_TRUE
-   * @param stride 相邻顶点属性之间的字节偏移量，如果为0，则表示紧密排列
-   * @param pointer 指向顶点数据在缓冲区中的偏移量，通常为0表示从缓冲区的起始位置开始读取
+   * @param stride 相邻顶点属性之间的字节偏移量，即步长，如果为0，则表示紧密排列
+   * @param pointer 在每个顶点的起始位置的偏移量，通常为0表示从缓冲区的开头开始读取
    */
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-  /**
-   * @brief 绑定指定类型的缓冲区对象到当前的OpenGL上下文
-   * @param type 缓冲区的类型：
-   *             GL_ARRAY_BUFFER，表示顶点属性数据的缓冲区
-   *             GL_ELEMENT_ARRAY_BUFFER，表示索引数据的缓冲区
-   * @param buffer 要绑定的缓冲区对象的ID，这里是之前创建并存储顶点数据的VBO
-   * 
-   * @note 绑定缓冲区后，后续对该类型缓冲区的操作（如设置数据、绘制等）都会作用于当前绑定的缓冲区
-   */
+  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)0);
+  glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), (void*)(3 * sizeof(GLfloat)));
+  
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  
+  /**
+   * @brief 按照索引数组的顺序绘制顶点，实现顶点重用和高效绘制。
+   * @param mode 绘制模式，指定如何解释顶点数据
+   *             GL_POINTS：将每个顶点作为一个独立的点绘制
+   *             GL_LINES：将每两个顶点连接成一条线段
+   *             GL_LINE_STRIP：将顶点依次连接成一条折线
+   *             GL_TRIANGLES：每三个顶点组成一个三角形
+   *             GL_TRIANGLE_STRIP：每三个顶点组成一个三角形，且共享边
+   * @param count 要绘制的顶点数量，这里是6，表示绘制两个三角形
+   * @param type 索引数据的类型，通常是GL_UNSIGNED_INT（无符号整数），也可以是GL_UNSIGNED_SHORT等
+   * @param indices 指向索引数据的指针，通常为0表示使用当前绑定的EBO（元素缓冲对象）
+   */
+  // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 
   /**
@@ -84,7 +91,7 @@ static void RenderScenceCB() {
    * @note 该函数不会自动刷新屏幕，需要调用glutSwapBuffers()来交换前后缓冲区以显示绘制结果
    * 
    */
-  glDrawArrays(GL_POINTS, 0, 1);
+  glDrawArrays(GL_TRIANGLES, 0, 3);
 
   /**
    * @brief 禁用顶点属性数组，通常在绘制完成后调用，以避免影响后续的绘制操作
@@ -92,6 +99,7 @@ static void RenderScenceCB() {
    * @param index 顶点属性的索引，通常与glEnableVertexAttribArray()中使用的索引一致
    */
   glDisableVertexAttribArray(0);
+  glDisableVertexAttribArray(1);
 
   /**
    * @brief 用于交换前后台缓冲区，实现双缓冲显示。
@@ -99,10 +107,18 @@ static void RenderScenceCB() {
   glutSwapBuffers();
 }
 
-//创建顶点缓冲器
+
 static void CreateVertexBuffer() {
-  // 将点置于屏幕中央
-  float Vertices[3] = {0.0f, 0.0f, 0.0f};
+  // 正方形的四个顶点坐标
+  float Vertices[] = {
+    // x,    y,     z,    u,    v
+    -0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+     0.5f, -0.5f, 0.0f, 0.0f, 0.0f,
+     0.5f,  0.5f, 0.0f, 0.0f, 0.0f,
+    -0.5f,  0.5f, 0.0f, 0.0f, 0.0f
+  };
+
+  GLuint Indices[] = {0, 1, 2, 2, 3, 0};
 
   /**
    * @brief 用于生成缓冲区对象的标识符（ID），通常用于创建 VBO（顶点缓冲对象）、EBO（索引缓冲对象）等。
@@ -114,6 +130,16 @@ static void CreateVertexBuffer() {
    * @note 生成的ID后续可用 glBindBuffer 绑定，再用 glBufferData 分配和上传数据
    */
   glGenBuffers(1, &VBO);
+
+  /**
+   * @brief 绑定指定类型的缓冲区对象到当前的OpenGL上下文
+   * @param type 缓冲区的类型：
+   *             GL_ARRAY_BUFFER，顶点属性缓冲区，存储顶点信息，如顶点坐标，颜色、法线等
+   *             GL_ELEMENT_ARRAY_BUFFER，元素索引缓冲区，存储顶点索引数据，用于索引绘制
+   * @param buffer 要绑定的缓冲区对象的ID，这里是之前创建并存储顶点数据的VBO
+   * 
+   * @note 绑定缓冲区后，后续对该类型缓冲区的操作（如设置数据、绘制等）都会作用于当前绑定的缓冲区
+   */
   glBindBuffer(GL_ARRAY_BUFFER, VBO);
   
   /**
@@ -128,6 +154,10 @@ static void CreateVertexBuffer() {
    * 
    */
   glBufferData(GL_ARRAY_BUFFER, sizeof(Vertices), Vertices, GL_STATIC_DRAW);
+
+  glGenBuffers(1, &EBO);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(Indices), Indices, GL_STATIC_DRAW);
 }
 
 /**
