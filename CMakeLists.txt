@@ -7,3 +7,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_executable(opengl_example src/opengl_example.cpp)
 target_link_libraries(opengl_example PUBLIC GL GLU glut GLEW)
+
+add_executable(opengl_image src/opengl_image.cpp)
+target_link_libraries(opengl_image PUBLIC GL GLU glut GLEW)
